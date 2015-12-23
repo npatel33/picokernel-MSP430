@@ -1,6 +1,6 @@
 #include<msp430g2553.h>
 #include<stdint.h>
-#include "kernel_time_sharing.h"
+#include "kernel.h"
 #include <legacymsp430.h>
 
 //task control block(tcb) base address for task id 0.
@@ -72,6 +72,8 @@ void SchedulerInit(void){
 	TACTL |= MC_1;		//Start timer A in up mode
 
 }
+
+/* scheduler with round robin algorithm */
 interrupt (TIMER0_A0_VECTOR) SchedulerISR(void){    //perform context switching
 	
 	P1OUT |= (1<<7);
@@ -108,7 +110,7 @@ void TaskInit(void (*pFun)(void),uint8_t TaskId){  //initialize tasks and their 
 	asm("push #0x0008");
 
 	
-
+	//initialize task stack frame with zero
 	for(Loop=0;Loop<12;Loop++){
 	
 		asm("push #0x0000");
