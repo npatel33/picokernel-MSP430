@@ -1,6 +1,5 @@
 #include<msp430.h>
 #include<in430.h>
-//#include<stdint.h>
 #include "kernel.h"
 
 //task control block(tcb) base address for task id 0.
@@ -10,20 +9,20 @@
 #define TASK_SIZE 64
 
 //save context  
-#define SAVE_CONTEXT()    asm("push r0 \n"\
-				  "push r2 \n"\
-				  "push r4 \n"\
-			      "push r5 \n"\
-			      "push r6 \n"\
-			      "push r7 \n"\
-			      "push r8 \n"\
-			      "push r9 \n"\
-			      "push r10 \n"\
-			      "push r11\n"\
-			      "push r12 \n"\
-			      "push r13 \n"\
-			      "push r14 \n"\
-			      "push r15\n")
+#define SAVE_CONTEXT() asm("push r0 \n"\
+			"push r2 \n"\
+                        "push r4 \n"\
+			"push r5 \n"\
+			"push r6 \n"\
+			"push r7 \n"\
+			"push r8 \n"\
+			"push r9 \n"\
+			"push r10 \n"\
+			"push r11\n"\
+			"push r12 \n"\
+			"push r13 \n"\
+			"push r14 \n"\
+			"push r15\n")
 
 //restore context
 #define RESTORE_CONTEXT() asm("pop r15 \n"\
@@ -36,10 +35,10 @@
 			      "pop r8 \n"\
 			      "pop r7 \n"\
 			      "pop r6 \n"\
-			      "pop r5 \n"\
+                              "pop r5 \n"\
 			      "pop r4 \n"\
 			      "pop r2 \n"\
-				  "pop r0 \n")
+			      "pop r0 \n")
 			   
 
 #ifndef MAX_TASK
@@ -55,7 +54,7 @@ struct sTask Task[MAX_TASK];
 void SchedulerInit(void){
 	
 
-	__disable_interrupt();			//disable global interrupt
+	__disable_interrupt();	
 	__nop();
 
 	TACTL|=TACLR + MC_0;	//clear/reset and stop the timer A
@@ -64,29 +63,25 @@ void SchedulerInit(void){
 	TACCTL0 &= ~(CCIFG);	//clear compare interrupt flag
 	TAR=0;			//Timer value set to 0
 	TACCR0=60;		//Compare register value for 10 ms period
-	//TACCR0=3000; //500ms
-	//eint();			//Enable global interrupt
 
 	TACTL |= MC_1;		//Start timer A in up mode
 
 
 }
 
-
+/******************************
+  scheduler with round robin algorithm
+  It also performs context switching
+******************************/
 void SchedulerISR(void) __attribute__((interrupt (TIMER0_A0_VECTOR),naked));
-/* scheduler with round robin algorithm */
-void SchedulerISR(void){    //perform context switching
-	
+void SchedulerISR(void){    	
 
-	//P1OUT ^= (1<<0);
-
-	//P1OUT |= (1<<7);
-	SAVE_CONTEXT(); //save current task context
+	SAVE_CONTEXT(); 
 	
 
 	asm("mov R1,%[dest]":[dest]"=r"(Task[CurrentTask].prevStack)::"R1");
 	
-	CurrentTask++; //point to next task
+	CurrentTask++; 
 	if(CurrentTask>=MAX_TASK){
 		CurrentTask=0;
 	}
@@ -94,13 +89,14 @@ void SchedulerISR(void){    //perform context switching
 	//load next task's stack pointer
 	asm("mov %[src],R1"::[src]"r"(Task[CurrentTask].prevStack):"R1");
 	
-	//P1OUT &= ~(1<<7);
-	RESTORE_CONTEXT();//restore next task's context
+	RESTORE_CONTEXT();
 
 }
 
-void TaskInit(void (*pFun)(void),uint16_t taskId){  //initialize tasks and their stack frame
-	
+/******************************
+  initialize tasks and their stack frame
+******************************/
+void TaskInit(void (*pFun)(void),uint16_t taskId){  	
 	/*
 	 * Store SP value to temp variable
 	 */
@@ -154,17 +150,17 @@ void TaskInit(void (*pFun)(void),uint16_t taskId){  //initialize tasks and their
 	__set_SP_register(temp);
 }
 
-void RunTask(uint8_t taskId){ //run a task
+/******************************
+  run a task
+******************************/
+void RunTask(uint8_t taskId){ 
+        
+        CurrentTask=taskId; //set running task
+        
+        SchedulerInit(); //Initialize timer
 
+        asm("mov %[src],r1"::[src]"m"(Task[taskId].prevStack)); //load sp
 
-	
-	CurrentTask=taskId; //set running task
-
-	SchedulerInit(); //Initialize timer
-
-    asm("mov %[src],r1"::[src]"m"(Task[taskId].prevStack)); //load sp
-
-    RESTORE_CONTEXT(); //pop out task
-
+        RESTORE_CONTEXT(); //pop out task
 }
 
