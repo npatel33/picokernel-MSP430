@@ -1,0 +1,8 @@
+.ccsproject
+.cproject
+.project
+.settings/
+Debug/
+main.c
+msp430g2553.ld
+targetConfigs/
